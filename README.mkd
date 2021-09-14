@@ -1,0 +1,2 @@
+# Minecraft CC Tweaked Scripts
+Repo for storing useful scripts for the Minecraft Mod [CC:Tweaked](https://tweaked.cc/)

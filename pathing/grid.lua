@@ -68,7 +68,7 @@ end
 
 function Grid:getNearestUndiscoveredTo(point)
     local options = {}
-    local index = Grid.new()
+    local index = Grid:new()
     table.insert(options, point)
     while #options > 0 do
         local newOptions = {}
@@ -77,7 +77,7 @@ function Grid:getNearestUndiscoveredTo(point)
             local target = vector.new(1, 0, 0)
             for i = 1, 4 do
                 local destination = option + target
-                local context = self:getPoint(destination)
+                local context = self:getPointContext(destination)
                 if context.discovered == false then
                     -- exit case, we found an undiscovered point
                     return destination
@@ -112,11 +112,11 @@ function Grid:drawPointScreen(point, screen)
     for y, xs in pairs(layer) do
         -- drawing a line of y
         local yloc = math.floor((point.y - y) + midy)
-        if yloc > 1 and yloc < width then
+        if yloc >= 1 and yloc <= width then
             for x, context in pairs(xs) do
                 -- drawing each x
                 local xloc = math.floor((point.x - x) + midx)
-                if xloc > 1 and xloc < height then
+                if xloc >= 1 and xloc <= height then
                     -- set draw location
                     screen.setCursorPos(yloc, xloc)
                     local symbol = " "

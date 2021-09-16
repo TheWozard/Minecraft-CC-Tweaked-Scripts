@@ -53,8 +53,10 @@ end
 function Path:drawScreen(screen)
     self.grid:drawPointScreen(self.movement.location.position, screen)
     screen.setCursorPos(1, 1)
-    screen.clearLine()
+    -- screen.clearLine()
     screen.write(self.movement.location:tostring())
+    screen.setCursorPos(1, 2)
+    -- screen.write(self.grid:getNearestUndiscoveredTo(self.movement.location.position):tostring())
 end
 
 function Path:draw() return self:drawScreen(term) end

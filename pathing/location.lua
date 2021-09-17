@@ -1,7 +1,9 @@
 Location = {}
 
-function Location:new()
-    local o = {position = vector.new(0, 0, 0), direction = vector.new(1, 0, 0)}
+function Location:new(position, direction)
+    local position = position or vector.new(0, 0, 0)
+    local direction = direction or vector.new(1, 0, 0)
+    local o = {position = position, direction = direction}
     setmetatable(o, self)
     self.__index = self
     return o
@@ -27,13 +29,11 @@ function Location:directionLeft()
     return vector.new(-self.direction.y, self.direction.x, 0)
 end
 
-function Location:to(position)
-    self.position = position
-end
+function Location:directionBehind() return -self.direction end
 
-function Location:face(direction)
-    self.direction = direction
-end
+function Location:to(position) self.position = position end
+
+function Location:face(direction) self.direction = direction end
 
 function Location:tostring()
     local facing = "Unkown"

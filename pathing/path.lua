@@ -55,16 +55,21 @@ function Path:pathTo(point)
     if path == nil then
         return false
     end
-    table.remove(path, 1) -- the first point is where we started
+    self:followPath(path)
+end
+
+function Path:followPath(path)
     for _, target in ipairs(path) do
-        self:draw()
-        print(target:tostring())
-        self.movement:pointAt(target)
-        if not self:forward() then
-            return false
+        while not self.movement.position:equals(target) do
+            self:draw()
+            print(target:tostring())
+            self.movement:pointAt(target)
+            if not self:forward() then
+                return false
+            end
         end
     end
-    return self.movement.position:equals(point)
+    return true
 end
 
 function Path:drawScreen(screen)

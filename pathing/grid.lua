@@ -20,8 +20,8 @@ end
 
 function Node:new(cost, location, bias_func, parent)
     local bias = 0
-    if bias_func ~= nil then bias = bias_func(location) end
     local o = {cost = cost, bias = bias, location = location, parent = parent}
+    if bias_func ~= nil then o.bias = bias_func(o) end
     setmetatable(o, self)
     self.__index = self
     return o
@@ -102,6 +102,30 @@ function Grid:setPointMetadata(point, value)
     self:setPointContext(point, context)
 end
 
+function Grid:getPointsInRadius(center, radius)
+    local points = {center}
+    local investigate = {center}
+    local index = Grid:new()
+    index:setPointDiscovered(center, true)
+    while #investigate > 0 do
+        local candidate = table.remove(investigate, #investigate)
+        local newPoints = {
+            candidate + vector.new(1,0,0),
+            candidate + vector.new(0,1,0),
+            candidate + vector.new(-1,0,0),
+            candidate + vector.new(0,-1,0),
+        }
+        for _, point in ipairs(newPoints) do
+            if not index:isPointDiscovered(point) and (center - point):length() < radius then
+                table.insert(points, point)
+                table.insert(investigate, point)
+                index:setPointDiscovered(point, true)
+            end
+        end
+    end
+    return points
+end
+
 function Grid:search(location, condition_func, bias_func)
     local node = Node:new(0, location, bias_func, nil)
     if condition_func(node) then return node end
@@ -133,8 +157,11 @@ function Grid:search(location, condition_func, bias_func)
                                   candidate.location:directionBehind()),
                      bias_func, candidate)
         }
+        table.sort(successors, function (a,b)
+            return a:value() < b:value()
+        end)
         for _, successor in ipairs(successors) do
-            if condition_func(node) then return successor end
+            if condition_func(successor) then return successor end
             if self:isPointPathable(successor.location.position) then
                 local metadata = closed:getPointMetadata(successor.location
                                                              .position)
@@ -149,98 +176,37 @@ function Grid:search(location, condition_func, bias_func)
     return nil
 end
 
-function Grid:getNearestUndiscoveredTo(location)
-    local node = Node:new(0, nil, location, nil)
-    local open = {node}
-    local closed = Grid:new()
-    closed:setPointMetadata(location.position, node)
-    while #open > 0 do
-        local lowest_index = 1
-        for index, target in ipairs(open) do
-            if target:value() < open[lowest_index]:value() then
-                lowest_index = index
+function Grid:pathToNearestUndiscovered(location)
+    local node = self:search(location, function (node)
+        return not self:isPointDiscovered(node.location.position)
+    end, function (node)
+        local points = self:getPointsInRadius(node.location.position, 3)
+        local bias = 0
+        for _, point in ipairs(points) do
+            if not self:isPointDiscovered(point) then
+                -- bias = bias + 1
+            elseif not self:isPointPathable(point) then
+                bias = bias - 5
+            elseif self:isPointDiscovered(point) then
+                bias = bias - 1
             end
         end
-
-        local candidate = table.remove(open, lowest_index)
-        local successors = {
-            Node:new(candidate.traveled + 1, nil, Location:new(
-                         candidate.location:infront(),
-                         candidate.location.direction), candidate),
-            Node:new(candidate.traveled + 2, nil,
-                     Location:new(candidate.location:right(),
-                                  candidate.location:directionRight()),
-                     candidate),
-            Node:new(candidate.traveled + 2, nil,
-                     Location:new(candidate.location:left(),
-                                  candidate.location:directionLeft()), candidate),
-            Node:new(candidate.traveled + 3, nil,
-                     Location:new(candidate.location:behind(),
-                                  candidate.location:directionBehind()),
-                     candidate)
-        }
-        for _, successor in ipairs(successors) do
-            if not self:isPointDiscovered(successor.location.position) then
-                return successor.location.position
-            end
-            if self:isPointPathable(successor.location.position) then
-                local metadata = closed:getPointMetadata(successor.location
-                                                             .position)
-                if metadata == nil or metadata:value() > successor:value() then
-                    table.insert(open, successor)
-                    closed:setPointMetadata(successor.location.position,
-                                            successor)
-                end
-            end
-        end
+        return bias
+    end)
+    if node ~= nil then
+        return node:toList()
     end
     return nil
 end
 
 function Grid:pathBetween(start, finish)
-    if start.position:equals(finish) then return {} end
-    local node = Node:new(0, finish, start, nil)
-    local open = {node}
-    local closed = Grid:new()
-    closed:setPointMetadata(start.position, node)
-    while #open > 0 do
-        -- Pick the 
-        local lowest_index = 1
-        for index, target in ipairs(open) do
-            if target:value() < open[lowest_index]:value() then
-                lowest_index = index
-            end
-        end
-
-        local candidate = table.remove(open, lowest_index)
-        local successors = {
-            Node:new(candidate.traveled + 1, finish, Location:new(
-                         candidate.location:infront(),
-                         candidate.location.direction), candidate),
-            Node:new(candidate.traveled + 2, finish, Location:new(
-                         candidate.location:right(),
-                         candidate.location:directionRight()), candidate),
-            Node:new(candidate.traveled + 2, finish, Location:new(
-                         candidate.location:left(),
-                         candidate.location:directionLeft()), candidate),
-            Node:new(candidate.traveled + 3, finish, Location:new(
-                         candidate.location:behind(),
-                         candidate.location:directionBehind()), candidate)
-        }
-        for _, successor in ipairs(successors) do
-            if successor.location.position:equals(finish) then
-                return successor:toList()
-            end
-            if self:isPointPathable(successor.location.position) then
-                local metadata = closed:getPointMetadata(successor.location
-                                                             .position)
-                if metadata == nil or metadata:value() > successor:value() then
-                    table.insert(open, successor)
-                    closed:setPointMetadata(successor.location.position,
-                                            successor)
-                end
-            end
-        end
+    local node = self:search(start, function (node)
+        return node.location.position:equals(finish)
+    end, function (node)
+        return (node.location.position - finish):length()
+    end)
+    if node ~= nil then
+        return node:toList()
     end
     return nil
 end
